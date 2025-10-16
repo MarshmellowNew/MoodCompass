@@ -1,9 +1,12 @@
-// ----------------------------------------------------
-// 1. ГЛАВНЫЙ ЭКРАН
-// ----------------------------------------------------
 import 'package:flutter/material.dart';
 import '../models/mood_entry.dart';
 import '../services/api_service.dart';
+import 'history_screen.dart'; // Для навигации
+import 'stats_screen.dart'; // Для навигации
+
+// ----------------------------------------------------
+// ГЛАВНЫЙ ЭКРАН
+// ----------------------------------------------------
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -17,28 +20,28 @@ class _MainScreenState extends State<MainScreen> {
   String? _selectedMood;
   final TextEditingController _noteController = TextEditingController();
 
-
   // Категории настроений
-  final Map<String, String> _moods = {
+  final Map<String, String> _moods = const {
     'Радость': '😃',
     'Спокойствие': '😌',
     'Грусть': '😔',
     'Энергия': '💪',
   };
 
-  void _saveMoodEntry() async {
-    if (_selectedMood == null) return;
+  // 1. Отдельная функция для фактического сохранения (ЛР5 и ЛР6)
+  void _saveAndCommitEntry() async {
+    if (_selectedMood == null || !mounted) return;
 
-    // 1. Показываем индикатор загрузки
+    // Показываем индикатор загрузки
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Сохранение... Получаем факт с API...')),
     );
 
-    // 2. Получаем факт асинхронно
+    // Получаем факт асинхронно
     final apiService = ApiService();
     final fact = await apiService.fetchRandomFact();
 
-    // 3. Создаем запись с полученным фактом
+    // Создаем запись с полученным фактом
     final newEntry = MoodEntry(
       mood: _selectedMood!,
       emoji: _moods[_selectedMood]!,
@@ -47,10 +50,10 @@ class _MainScreenState extends State<MainScreen> {
       apiFact: fact,
     );
 
-    // 4. Добавляем в историю
+    // Добавляем в историю
     moodHistory.insert(0, newEntry);
 
-    // 5. Очищаем форму и показываем успех
+    // Очищаем форму и показываем успех
     setState(() {
       _selectedMood = null;
       _noteController.clear();
@@ -61,12 +64,52 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  // 2. Функция, которая показывает окно подтверждения (Пункт 6)
+  void _showConfirmationDialog() {
+    if (_selectedMood == null) return;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Подтверждение записи'),
+          content: Text('Вы уверены, что хотите сохранить настроение "${_selectedMood}"?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Отмена', style: TextStyle(color: Colors.grey)),
+              onPressed: () {
+                Navigator.of(context).pop(); // Закрыть диалог
+              },
+            ),
+            ElevatedButton(
+              child: const Text('Сохранить'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Закрыть диалог
+                _saveAndCommitEntry(); // Запустить сохранение
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Как ваше настроение?'),
         actions: [
+          // Кнопка Статистики
+          IconButton(
+            icon: const Icon(Icons.pie_chart_outline),
+            onPressed: () {
+              Navigator.pushNamed(context, '/stats');
+            },
+            tooltip: 'Статистика Настроений',
+          ),
+          // Кнопка Истории
           IconButton(
             icon: const Icon(Icons.history_toggle_off_outlined),
             onPressed: () {
@@ -88,37 +131,53 @@ class _MainScreenState extends State<MainScreen> {
                   crossAxisCount: 2, // 2 кнопки в ряд
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
-                  childAspectRatio: 2.5, // Соотношение сторон
+                  childAspectRatio: 1.5, // Изменили соотношение для вертикального отображения эмодзи
                 ),
                 itemCount: _moods.length,
                 itemBuilder: (context, index) {
                   String moodName = _moods.keys.elementAt(index);
                   String moodEmoji = _moods.values.elementAt(index);
 
-                  // Кнопка-карточка для выбора настроения
+                  // Кнопка-карточка для выбора настроения (Пункт 4 - Дизайн)
                   return ElevatedButton(
                     onPressed: () {
                       setState(() {
-                        // Обновляем состояние при выборе
                         _selectedMood = moodName;
                       });
                     },
                     style: ElevatedButton.styleFrom(
-                      // Стилизация: выделение выбранной кнопки
+                      // Стилизация: Чистый дизайн карточек
                       backgroundColor: _selectedMood == moodName
-                          ? Colors.blueGrey.shade700
-                          : Colors.grey.shade100,
+                          ? Theme.of(context).colorScheme.secondary.withOpacity(0.8) // Цвет акцента при выборе
+                          : Colors.white, // Белый фон
                       foregroundColor: _selectedMood == moodName
                           ? Colors.white
                           : Colors.black87,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15),
+                        side: BorderSide(
+                          color: _selectedMood == moodName
+                              ? Theme.of(context).colorScheme.secondary
+                              : Colors.grey.shade300,
+                          width: 1,
+                        ),
                       ),
-                      elevation: _selectedMood == moodName ? 4 : 1,
+                      elevation: _selectedMood == moodName ? 6 : 1, // Тень только при выборе
                     ),
-                    child: Text(
-                      '$moodEmoji $moodName',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(moodEmoji, style: const TextStyle(fontSize: 28)),
+                        const SizedBox(height: 4),
+                        Text(
+                          moodName,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: _selectedMood == moodName ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 },
@@ -131,16 +190,16 @@ class _MainScreenState extends State<MainScreen> {
             TextField(
               controller: _noteController,
               decoration: InputDecoration(
-                labelText: 'Краткая заметка (опционально)',
+                labelText: 'Краткая заметка',
                 hintText: 'Что повлияло на ваше настроение?',
                 border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
 
-                //  Кнопка стирания
+                // Кнопка стирания (Пункт 7)
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.clear, color: Colors.grey),
                   onPressed: () {
                     _noteController.clear();
-                    // Дополнительно можно вызвать setState, если нужно, чтобы кнопка исчезала
+                    // Вызываем setState для обновления, если нужно, чтобы кнопка clear исчезала при пустом поле.
                     // setState(() {});
                   },
                 ),
@@ -151,11 +210,11 @@ class _MainScreenState extends State<MainScreen> {
 
             // Кнопка "Сохранить"
             ElevatedButton(
-              onPressed: _selectedMood == null ? null : _saveMoodEntry,
+              onPressed: _selectedMood == null ? null : _showConfirmationDialog, // Вызываем диалог
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 textStyle: const TextStyle(fontSize: 18),
-                backgroundColor: Colors.blueGrey,
+                backgroundColor: Theme.of(context).colorScheme.secondary, // Используем акцентный цвет
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
