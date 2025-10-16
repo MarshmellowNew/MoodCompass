@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'mood_entry.dart';
 
 void main() {
   runApp(const MoodCompassApp());
@@ -14,18 +15,19 @@ class MoodCompassApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blueGrey,
       ),
+      debugShowCheckedModeBanner: false,
       // Настраиваем маршруты для навигации
       initialRoute: '/',
       routes: {
         '/': (context) => const MainScreen(),
-        '/history': (context) => const HistoryScreen(), // Наш второй экран
+        '/history': (context) => const HistoryScreen(), // второй экран
       },
     );
   }
 }
 
 // ----------------------------------------------------
-// 1. ГЛАВНЫЙ ЭКРАН (ЛР4 - Верстка)
+// 1. ГЛАВНЫЙ ЭКРАН
 // ----------------------------------------------------
 
 class MainScreen extends StatefulWidget {
@@ -38,6 +40,8 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   // Выбранное настроение (изначально null)
   String? _selectedMood;
+  final TextEditingController _noteController = TextEditingController();
+
 
   // Категории настроений
   final Map<String, String> _moods = {
@@ -46,6 +50,30 @@ class _MainScreenState extends State<MainScreen> {
     'Грусть': '😔',
     'Энергия': '💪',
   };
+
+  void _saveMoodEntry() {
+    if (_selectedMood == null) return;
+
+    final newEntry = MoodEntry(
+      mood: _selectedMood!,
+      emoji: _moods[_selectedMood]!,
+      note: _noteController.text.isNotEmpty ? _noteController.text : null,
+      timestamp: DateTime.now(),
+    );
+
+    // Добавляем запись в начало списка
+    moodHistory.insert(0, newEntry);
+
+    // Очищаем форму
+    setState(() {
+      _selectedMood = null;
+      _noteController.clear();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Настроение "${newEntry.mood}" сохранено!')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,8 +142,9 @@ class _MainScreenState extends State<MainScreen> {
             const SizedBox(height: 20),
 
             // Текстовое поле для заметки
-            const TextField(
-              decoration: InputDecoration(
+            TextField(
+              controller: _noteController,
+              decoration: const InputDecoration(
                 labelText: 'Краткая заметка (опционально)',
                 hintText: 'Что повлияло на ваше настроение?',
                 border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
@@ -126,12 +155,7 @@ class _MainScreenState extends State<MainScreen> {
 
             // Кнопка "Сохранить"
             ElevatedButton(
-              onPressed: _selectedMood == null ? null : () {
-                // Заглушка, логика будет в ЛР5
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Настроение "$_selectedMood" выбрано. Добавим логику в ЛР5!')),
-                );
-              },
+              onPressed: _selectedMood == null ? null : _saveMoodEntry,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 textStyle: const TextStyle(fontSize: 18),
@@ -150,7 +174,7 @@ class _MainScreenState extends State<MainScreen> {
 }
 
 // ----------------------------------------------------
-// 2. ЭКРАН ИСТОРИИ (Заглушка для ЛР4)
+// ЭКРАН ИСТОРИИ - HistoryScreen (Обновление для отображения данных)
 // ----------------------------------------------------
 
 class HistoryScreen extends StatelessWidget {
@@ -162,11 +186,20 @@ class HistoryScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('История Настроений'),
       ),
-      body: const Center(
-        child: Text(
-          'Здесь будет список сохраненных записей.',
-          style: TextStyle(fontSize: 20),
-        ),
+      // Отображение коллекции элементов из moodHistory
+      body: ListView.builder(
+        itemCount: moodHistory.length,
+        itemBuilder: (context, index) {
+          final entry = moodHistory[index];
+          return ListTile(
+            leading: Text(entry.emoji, style: const TextStyle(fontSize: 24)),
+            title: Text(entry.toString()),
+            // Отображение заметки, если она есть
+            subtitle: entry.note != null && entry.note!.isNotEmpty
+                ? Text('Заметка: ${entry.note!}')
+                : const Text('Заметки нет'),
+          );
+        },
       ),
     );
   }
