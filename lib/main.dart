@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'mood_entry.dart';
+import 'api_service.dart';
 
 void main() {
   runApp(const MoodCompassApp());
@@ -51,27 +52,38 @@ class _MainScreenState extends State<MainScreen> {
     'Энергия': '💪',
   };
 
-  void _saveMoodEntry() {
+  void _saveMoodEntry() async {
     if (_selectedMood == null) return;
 
+    // 1. Показываем индикатор загрузки
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Сохранение... Получаем факт с API...')),
+    );
+
+    // 2. Получаем факт асинхронно
+    final apiService = ApiService();
+    final fact = await apiService.fetchRandomFact();
+
+    // 3. Создаем запись с полученным фактом
     final newEntry = MoodEntry(
       mood: _selectedMood!,
       emoji: _moods[_selectedMood]!,
       note: _noteController.text.isNotEmpty ? _noteController.text : null,
       timestamp: DateTime.now(),
+      apiFact: fact,
     );
 
-    // Добавляем запись в начало списка
+    // 4. Добавляем в историю
     moodHistory.insert(0, newEntry);
 
-    // Очищаем форму
+    // 5. Очищаем форму и показываем успех
     setState(() {
       _selectedMood = null;
       _noteController.clear();
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Настроение "${newEntry.mood}" сохранено!')),
+      SnackBar(content: Text('Запись настроения "${newEntry.mood}" сохранена.')),
     );
   }
 
@@ -191,13 +203,21 @@ class HistoryScreen extends StatelessWidget {
         itemCount: moodHistory.length,
         itemBuilder: (context, index) {
           final entry = moodHistory[index];
+
+          // Определяем, что показать в subtitle
+          String subtitleText = entry.note != null && entry.note!.isNotEmpty
+              ? 'Заметка: ${entry.note!}\n'
+              : 'Заметки нет\n';
+
+          // Добавляем факт от API
+          subtitleText += 'API Факт: ${entry.apiFact ?? "Не получен"}';
+
           return ListTile(
             leading: Text(entry.emoji, style: const TextStyle(fontSize: 24)),
             title: Text(entry.toString()),
-            // Отображение заметки, если она есть
-            subtitle: entry.note != null && entry.note!.isNotEmpty
-                ? Text('Заметка: ${entry.note!}')
-                : const Text('Заметки нет'),
+            // Используем RichText для отображения заметки и факта
+            subtitle: Text(subtitleText),
+            isThreeLine: true, // Включаем поддержку трех строк для отображения API-факта
           );
         },
       ),

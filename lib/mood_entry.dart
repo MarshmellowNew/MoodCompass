@@ -3,12 +3,14 @@ class MoodEntry {
   final String emoji;
   final String? note; // Заметка опциональна
   final DateTime timestamp;
+  final String? apiFact;
 
   MoodEntry({
     required this.mood,
     required this.emoji,
     this.note,
     required this.timestamp,
+    this.apiFact,
   });
 
   // Временное форматирование для отображения в списке
