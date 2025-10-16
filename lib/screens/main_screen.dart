@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/mood_entry.dart';
 import '../services/api_service.dart';
+import '../services/storage_service.dart';
 import 'history_screen.dart'; // Для навигации
 import 'stats_screen.dart'; // Для навигации
 
@@ -34,7 +35,7 @@ class _MainScreenState extends State<MainScreen> {
 
     // Показываем индикатор загрузки
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Сохранение... Получаем факт с API...')),
+      const SnackBar(content: Text('Сохранение... Вас ждёт факт...')),
     );
 
     // Получаем факт асинхронно
@@ -52,6 +53,9 @@ class _MainScreenState extends State<MainScreen> {
 
     // Добавляем в историю
     moodHistory.insert(0, newEntry);
+
+    // Сохраняем в хранилище после добавления
+    await StorageService().saveHistory(moodHistory);
 
     // Очищаем форму и показываем успех
     setState(() {
@@ -104,16 +108,20 @@ class _MainScreenState extends State<MainScreen> {
           // Кнопка Статистики
           IconButton(
             icon: const Icon(Icons.pie_chart_outline),
-            onPressed: () {
-              Navigator.pushNamed(context, '/stats');
+            onPressed: () async {
+              // Используем push для обновления экрана
+              await Navigator.push(context, MaterialPageRoute(builder: (context) => const StatsScreen()));
+              setState(() {}); // Принудительно обновляем главный экран
             },
             tooltip: 'Статистика Настроений',
           ),
           // Кнопка Истории
           IconButton(
             icon: const Icon(Icons.history_toggle_off_outlined),
-            onPressed: () {
-              Navigator.pushNamed(context, '/history');
+            onPressed: () async {
+              // Используем push для обновления экрана
+              await Navigator.push(context, MaterialPageRoute(builder: (context) => const HistoryScreen()));
+              setState(() {}); // Принудительно обновляем главный экран
             },
             tooltip: 'История Настроений',
           ),

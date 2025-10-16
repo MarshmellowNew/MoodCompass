@@ -2,8 +2,16 @@ import 'package:flutter/material.dart';
 import 'screens/main_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/stats_screen.dart';
+import 'services/storage_service.dart';
+import 'models/mood_entry.dart';
 
-void main() {
+void main() async { // main теперь async
+  WidgetsFlutterBinding.ensureInitialized(); // Обязательно для async
+
+  // Загружаем сохраненные данные перед запуском приложения
+  final loadedHistory = await StorageService().loadHistory();
+  moodHistory.addAll(loadedHistory); // Заполняем глобальный список
+
   runApp(const MoodCompassApp());
 }
 
